@@ -1,4 +1,4 @@
-package pl.squirrel.classycle;
+package com.anagaf.classycle;
 
 import org.apache.tools.ant.types.FileSet;
 import org.gradle.api.DefaultTask;
@@ -25,12 +25,6 @@ class SourceSetClassycleTask extends DefaultTask {
     /** Report file. */
     private File reportFile;
 
-    /** Dependency checking task factory. */
-    private DependencyCheckingTaskFactory dependencyCheckingTaskFactory;
-
-    /** Default definition file (required for backward compatibility). */
-    private File defaultDefinitionFile;
-
     public SourceSetClassycleTask() {
         final Logger log = getProject().getLogger();
 
@@ -38,33 +32,27 @@ class SourceSetClassycleTask extends DefaultTask {
 
         doLast(task ->
                {
-                   final File definitionFile;
                    if (getDefinitionFilePath() == null) {
-                       if (!defaultDefinitionFile.exists()) {
-                           log.info("Classycle definition file for task " + task.getName() + " is not specified");
-                           return;
-                       }
-                       definitionFile = defaultDefinitionFile;
+                       log.info("Classycle definition file for task " + task.getName() + " is not specified");
+                       return;
                    }
-                   else {
-                       definitionFile = getProject().file(getDefinitionFilePath());
-                       if (!definitionFile.exists()) {
-                           throw new RuntimeException("Classycle definition file "
-                                                              + definitionFile.getAbsolutePath()
-                                                              + " does not exist");
-                       }
+
+                   final File definitionFile = getProject().file(getDefinitionFilePath());
+                   if (!definitionFile.exists()) {
+                       throw new RuntimeException("Classycle definition file "
+                                                          + definitionFile.getAbsolutePath()
+                                                          + " does not exist");
                    }
 
                    if (!classesDir.exists() || !classesDir.isDirectory()) {
                        throw new RuntimeException("Invalid classycle directory " + classesDir.getAbsolutePath());
                    }
 
-                   final File parentFile = reportFile.getParentFile();
-                   parentFile.mkdirs();
+                   reportFile.getParentFile().mkdirs();
                    try {
                        log.debug("Running classycle analysis on: " + classesDir);
 
-                       final DependencyCheckingTask depCheckTask = dependencyCheckingTaskFactory.createTask();
+                       final DependencyCheckingTask depCheckTask = new DependencyCheckingTask();
                        depCheckTask.setReportFile(reportFile);
                        depCheckTask.setFailOnUnwantedDependencies(true);
                        depCheckTask.setMergeInnerClasses(true);
@@ -88,7 +76,6 @@ class SourceSetClassycleTask extends DefaultTask {
     void setSourceSetName(final String sourceSetName) {
         reportFile = reporting.file("classycle/" + sourceSetName + ".txt");
         getOutputs().file(reportFile);
-        defaultDefinitionFile = getProject().file("src/test/resources/classycle-" + sourceSetName + ".txt");
     }
 
     void setClassesDir(final File classesDir) {
@@ -102,9 +89,5 @@ class SourceSetClassycleTask extends DefaultTask {
 
     public void setDefinitionFilePath(final String definitionFilePath) {
         this.definitionFilePath = definitionFilePath;
-    }
-
-    void setDependencyCheckingTaskFactory(final DependencyCheckingTaskFactory factory) {
-        this.dependencyCheckingTaskFactory = factory;
     }
 }

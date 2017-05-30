@@ -22,27 +22,24 @@ dependencies {
     compile gradleApi()
     compile files('lib/classycle-1.4.2.jar')
     compile 'com.android.tools.build:gradle:2.2.0'
-
-    testCompile 'junit:junit:4.12'
-    testCompile 'org.mockito:mockito-core:2.7.19'
 }
 
-version = "2.0"
-group = "pl.squirrel"
+version = "1.0.1"
+group = "com.anagaf"
 
 jar {
     from zipTree('lib/classycle-1.4.2.jar')
 }
 
 pluginBundle {
-    website = 'https://github.com/konrad-garus/classycle-gradle-plugin'
-    vcsUrl = 'https://github.com/konrad-garus/classycle-gradle-plugin'
-    description = 'Gradle plugin for Classycle dependency analyzer'
+    website = 'https://github.com/anagaf/classycle-gradle-plugin'
+    vcsUrl = 'https://github.com/anagaf/classycle-gradle-plugin'
+    description = 'Gradle plugin for Classycle dependency analyzer with Android support'
     tags = ['classycle', 'code quality']
 
     plugins {
         classyclePlugin {
-            id = 'pl.squirrel.classycle'
+            id = 'com.anagaf.classycle'
             displayName = 'Gradle Classycle plugin'
         }
     }
