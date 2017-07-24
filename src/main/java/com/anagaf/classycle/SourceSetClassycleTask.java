@@ -10,7 +10,15 @@ import java.io.File;
 import classycle.ant.DependencyCheckingTask;
 
 /**
- * Source set classycle check task.
+ * Source set Classycle analysis task.
+ *
+ * This task needs a Classycle definition file to perform the analysis. It's possible to specify
+ * the definition file path explicitly in build.gradle (e.g. 'classycleMain.definitionFilePath =
+ * config/classycle.config'). If the path is not specified explicitly the task checks first 'config/
+ * classycle[BuildVariantName].txt' (e.g. 'config/classycleMain.txt') and then 'config/classycle.txt'.
+ * If definition file is not found the task does nothing.
+ *
+ * The analysis result is stored to 'build/reports/classycle/[buildVarianName].txt'.
  */
 class SourceSetClassycleTask extends DefaultTask {
     /** Reporting extension. */
@@ -25,6 +33,12 @@ class SourceSetClassycleTask extends DefaultTask {
     /** Report file. */
     private File reportFile;
 
+    /** Build variant name. */
+    private String buildVariantName;
+
+    /**
+     * Constructor.
+     */
     public SourceSetClassycleTask() {
         final Logger log = getProject().getLogger();
 
@@ -32,16 +46,10 @@ class SourceSetClassycleTask extends DefaultTask {
 
         doLast(task ->
                {
-                   if (getDefinitionFilePath() == null) {
-                       log.info("Classycle definition file for task " + task.getName() + " is not specified");
-                       return;
-                   }
-
-                   final File definitionFile = getProject().file(getDefinitionFilePath());
+                   final File definitionFile = getDefinitionFile();
                    if (!definitionFile.exists()) {
-                       throw new RuntimeException("Classycle definition file "
-                                                          + definitionFile.getAbsolutePath()
-                                                          + " does not exist");
+                       log.info("Cannot find classycle definition file for " + getBuildVariantName() + " build variant");
+                       return;
                    }
 
                    if (!classesDir.exists() || !classesDir.isDirectory()) {
@@ -64,8 +72,7 @@ class SourceSetClassycleTask extends DefaultTask {
                        fileSet.setProject(depCheckTask.getProject());
                        depCheckTask.add(fileSet);
                        depCheckTask.execute();
-                   }
-                   catch (Exception e) {
+                   } catch (Exception e) {
                        throw new RuntimeException("Classycle check failed: " + e.getMessage()
                                                           + ". See report at " + reportFile.getAbsolutePath());
 
@@ -73,14 +80,33 @@ class SourceSetClassycleTask extends DefaultTask {
                });
     }
 
-    void setSourceSetName(final String sourceSetName) {
-        reportFile = reporting.file("classycle/" + sourceSetName + ".txt");
+    /**
+     * Returns definition files (may not exist).
+     */
+    private File getDefinitionFile() {
+        File definitionFile;
+        if (getDefinitionFilePath() == null) {
+            definitionFile = getProject().file("config/classycle"
+                                                       + Utils.capitalizeFirstLetter(getBuildVariantName())
+                                                       + ".txt");
+            if (!definitionFile.exists()) {
+                definitionFile = getProject().file("config/classycle.txt");
+            }
+        } else {
+            definitionFile = getProject().file(getDefinitionFilePath());
+        }
+        return definitionFile;
+    }
+
+    void setBuildVariantName(final String buildVariantName) {
+        this.buildVariantName = buildVariantName;
+        reportFile = reporting.file("classycle/" + buildVariantName + ".txt");
         getOutputs().file(reportFile);
     }
 
     void setClassesDir(final File classesDir) {
         this.classesDir = classesDir;
-        getInputs().files(classesDir);
+        getInputs().dir(classesDir);
     }
 
     private String getDefinitionFilePath() {
@@ -89,5 +115,9 @@ class SourceSetClassycleTask extends DefaultTask {
 
     public void setDefinitionFilePath(final String definitionFilePath) {
         this.definitionFilePath = definitionFilePath;
+    }
+
+    private String getBuildVariantName() {
+        return buildVariantName;
     }
 }

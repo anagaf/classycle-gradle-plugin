@@ -1,7 +1,6 @@
 package com.anagaf.classycle;
 
 import com.android.build.gradle.AppExtension;
-import com.android.build.gradle.api.AndroidSourceSet;
 
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -13,20 +12,15 @@ import org.gradle.api.tasks.SourceSet;
 import java.io.File;
 
 /**
- * Gradle plugin that creates classycle tasks for project source sets. Task names are built as
- * "classycle" + source set name (e.g. "classycleRelease", "classycleMain" etc).
+ * Gradle plugin that creates classycle tasks for project build variants. Task names are built as
+ * "classycle" + build variant name (e.g. "classycleRelease", "classycleMain" etc).
  *
  * Resulting task graph is:
  * -- check
  * ---- classycle
- * ------ classycleRelease
- * ------ classycleDebug
+ * ------ classycleMain
+ * ------ classycleTest
  * ...
- *
- * Specify classycle definition file path to enable check for the particular source set (e.g.
- * classycleRelease.definitionFilePath = "config/classycle.txt")
- *
- * If definition file is not specified the check is skipped for the particular source set.
  */
 public class ClassyclePlugin implements Plugin<Project> {
 
@@ -49,17 +43,17 @@ public class ClassyclePlugin implements Plugin<Project> {
 
         final AppExtension androidExtension = project.getExtensions().findByType(AppExtension.class);
         if (androidExtension != null) {
-            logger.debug("Creating classycle tasks for Android source sets");
+            logger.debug("Creating classycle tasks for Android build variants");
 
-            for (AndroidSourceSet sourceSet : androidExtension.getSourceSets()) {
+            androidExtension.getApplicationVariants().all(variant -> {
                 final File classesDir = new File(project.getBuildDir(),
-                                                 "intermediates/classes/" + sourceSet.getName());
+                                                 "intermediates/classes/" + variant.getFlavorName());
                 createSourceSetClassycleTask(logger,
                                              classycleTask,
-                                             sourceSet.getName(),
+                                             variant.getFlavorName(),
                                              classesDir,
                                              "assemble");
-            }
+            });
         }
 
         project.getTasks().getByName("check").dependsOn(classycleTask);
@@ -69,42 +63,31 @@ public class ClassyclePlugin implements Plugin<Project> {
      * Creates source set classycle task. Adds dependency of the created task to general "classycle"
      * task.
      *
-     * @param logger          logger
-     * @param classycleTask   general classycle task
-     * @param sourceSetName   source set name
-     * @param classesDir      source set classes directory
-     * @param classesTaskName task that builds class-files
+     * @param logger           logger
+     * @param classycleTask    general classycle task
+     * @param buildVariantName source set name
+     * @param classesDir       source set classes directory
+     * @param classesTaskName  task that builds class-files
      */
     private void createSourceSetClassycleTask(final Logger logger,
                                               final Task classycleTask,
-                                              final String sourceSetName,
+                                              final String buildVariantName,
                                               final File classesDir,
                                               final String classesTaskName) {
         final Project project = classycleTask.getProject();
-        final String taskName = "classycle" + capitalizeFirstLetter(sourceSetName);
-        final SourceSetClassycleTask task = project.getTasks().create(taskName, SourceSetClassycleTask.class);
-        task.setSourceSetName(sourceSetName);
-        task.setClassesDir(classesDir);
-        task.dependsOn(project.getTasks().getByName(classesTaskName));
-        classycleTask.dependsOn(task);
+        final String taskName = "classycle" + Utils.capitalizeFirstLetter(buildVariantName);
+        if (project.getTasks().findByName(taskName) == null) {
+            final SourceSetClassycleTask task = project.getTasks().create(taskName, SourceSetClassycleTask.class);
+            task.setBuildVariantName(buildVariantName);
+            task.setClassesDir(classesDir);
+            task.dependsOn(project.getTasks().getByName(classesTaskName));
+            classycleTask.dependsOn(task);
 
-        logger.debug("Created task " + taskName
-                             + " for source set " + sourceSetName
-                             + " (classes dir " + classesDir.getAbsolutePath()
-                             + ", classes task name " + classesTaskName
-                             + ")");
-    }
-
-    /**
-     * Capitalizes string first letter.
-     *
-     * @param original original string
-     * @return string with the first letter capitalized
-     */
-    private static String capitalizeFirstLetter(String original) {
-        if (original == null || original.isEmpty()) {
-            return original;
+            logger.debug("Created task " + taskName
+                                 + " for source set " + buildVariantName
+                                 + " (classes dir " + classesDir.getAbsolutePath()
+                                 + ", classes task name " + classesTaskName
+                                 + ")");
         }
-        return original.substring(0, 1).toUpperCase() + original.substring(1);
     }
 }

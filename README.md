@@ -1,15 +1,18 @@
 # classycle-gradle-plugin
 
-This is a gradle plugin that creates Classycle tasks for all project source sets. Task names are constructed
-as "classycle" + source set name (e.g. "classycleRelease", "classycleMain" etc).
+This is a Gradle plugin that performs Classycle analysis. It supports  both pure Java and 
+Android projects.
+ 
 
-As the result of this plugin application "check" task depends on the general "classycle" task. General
-"classycle" task depends on source set Classycle tasks i.e. the resulting task graph looks like:
+Applying this plugin creates a bunch of new tasks with names constructed as 'classycle + 
+BuildVariantName' (e.g. "classycleRelease", "classycleMain" etc). Each task performs the analysis
+of the corresponding project build variant classes. Also a general "classycle" task is created
+that depends on the build variants tasks. The resulting task graph looks like:
 ```
 check
     classycle
-        classycleRelease
-        classycleDebug
+        classycleMain
+        classycleTest
         ...
 ```
 ## Usage
@@ -23,7 +26,7 @@ buildscript {
     }
   }
   dependencies {
-    classpath "gradle.plugin.com.anagaf:classycle-gradle-plugin:1.0.1"
+    classpath "gradle.plugin.com.anagaf:classycle-gradle-plugin:1.0.2"
   }
 }
 
@@ -33,24 +36,26 @@ Build script snippet for new, incubating, plugin mechanism introduced in
 Gradle 2.1:
 ```
 plugins {
-  id "com.anagaf.classycle" version "1.0.1"
+  id "com.anagaf.classycle" version "1.0.2"
 }
 ```
 ### Create Classycle Definition File
 
-config/classycle-main.txt:
+config/classycleMain.txt:
 ```
 show allResults
 
 {package} = com.example
 check absenceOfPackageCycles > 1 in ${package}.*
 ```
-Specify Classycle definition file path for the source sets you would like to be checked. This could be 
-done by setting "definitionFilePath" property of the corresponding Classycle task:
+Specify Classycle definition file path for the build variants you would like to be checked.
 ```
-classycleMain.definitionFilePath = "config/classycle-main.txt"
+classycleMain.definitionFilePath = "config/classycleMain.txt"
 ```
-Note that source set Classycle tasks without definition file are ignored.
+If definition file path is not specified Classycle tasks look for 
+'config/classycleBuildVariantName.txt' (e.g. 'config/classycleProd.txt' for 
+'prod' build variant) first and 'config/classycle.txt' then.  If definition 
+file is not found no analysis is performed.
 
 ### Run the Analyzer
 
