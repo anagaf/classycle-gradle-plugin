@@ -24,7 +24,7 @@ dependencies {
     compile 'com.android.tools.build:gradle:2.2.0'
 }
 
-version = "1.0.2"
+version = "1.0.3"
 group = "com.anagaf"
 
 jar {
