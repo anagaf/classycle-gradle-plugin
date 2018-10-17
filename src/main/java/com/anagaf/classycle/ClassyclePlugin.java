@@ -10,6 +10,7 @@ import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
 
 import java.io.File;
+import org.gradle.api.tasks.compile.JavaCompile;
 
 /**
  * Gradle plugin that creates classycle tasks for project build variants. Task names are built as
@@ -46,13 +47,19 @@ public class ClassyclePlugin implements Plugin<Project> {
             logger.debug("Creating classycle tasks for Android build variants");
 
             androidExtension.getApplicationVariants().all(variant -> {
-                final File classesDir = new File(project.getBuildDir(),
-                                                 "intermediates/classes/" + variant.getFlavorName());
-                createSourceSetClassycleTask(logger,
-                                             classycleTask,
-                                             variant.getFlavorName(),
-                                             classesDir,
-                                             "assemble");
+                final Task compileTask = variant.getJavaCompiler();
+                if (compileTask instanceof JavaCompile) {
+                    final JavaCompile javaCompileTask = (JavaCompile) compileTask;
+                    final File classesDir = javaCompileTask.getDestinationDir();
+                    createSourceSetClassycleTask(
+                        logger,
+                        classycleTask,
+                        variant.getName(),
+                        classesDir,
+                        "assemble");
+                } else {
+                    logger.warn("Unexpected Java compiler task type");
+                }
             });
         }
 
